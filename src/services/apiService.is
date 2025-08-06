@@ -1,0 +1,8 @@
+// Smart API service that switches based on environment
+import MockApiService from './mockApiService';
+import RealApiService from './realApiService';
+
+// Use real API if VITE_API_URL is set, otherwise use mock
+const USE_REAL_API = import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL !== 'mock';
+
+export default USE_REAL_API ? RealApiService : MockApiService;
