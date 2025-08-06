@@ -1,0 +1,347 @@
+import dotenv from 'dotenv';
+import OpenAI from 'openai';
+
+// Load environment variables
+dotenv.config();
+
+// Check if OpenAI API key is provided
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const USE_MOCK_AI = !OPENAI_API_KEY || OPENAI_API_KEY === 'your-openai-api-key-here';
+
+let openai: OpenAI | null = null;
+
+if (!USE_MOCK_AI) {
+  openai = new OpenAI({
+    apiKey: OPENAI_API_KEY,
+    maxRetries: 5
+  });
+}
+
+export interface GenerationInput {
+  type: 'single' | 'agentic';
+  mainIdea: string;
+  context?: string;
+  industry?: string;
+  targetAudience?: string;
+  outputFormat: string;
+  tone: string;
+  length: string;
+  requirements?: string;
+  examples?: string;
+  taskDecomposition?: string;
+  agentCapabilities?: string;
+  workflowParams?: string;
+}
+
+export interface GenerationResult {
+  content: string;
+  tokensUsed: number;
+  cost: number;
+}
+
+export class OpenAIService {
+  private static readonly COST_PER_1K_TOKENS = 0.03; // GPT-4 pricing
+
+  static async generateSinglePrompt(input: GenerationInput): Promise<GenerationResult> {
+    if (USE_MOCK_AI) {
+      return this.generateMockSinglePrompt(input);
+    }
+
+    const systemPrompt = `You are an expert AI prompt engineer. Your task is to transform user ideas into highly effective, well-structured prompts that will get the best results from AI models.
+
+Guidelines for creating optimized prompts:
+1. Start with clear role/context setting when appropriate
+2. Provide specific, actionable task definitions
+3. Include output format specifications
+4. Add relevant constraints and requirements
+5. Use examples when they would be helpful
+6. Structure for clarity and effectiveness
+7. Include quality criteria when needed
+
+Transform the user's basic idea into a professional, optimized prompt that follows best practices.`;
+
+    const userPrompt = this.buildSinglePromptRequest(input);
+
+    try {
+      const response = await openai!.chat.completions.create({
+        model: 'gpt-4',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 1500
+      });
+
+      const content = response.choices[0]?.message?.content || 'Failed to generate prompt';
+      const tokensUsed = response.usage?.total_tokens || 0;
+      const cost = (tokensUsed / 1000) * this.COST_PER_1K_TOKENS;
+
+      return { content, tokensUsed, cost };
+    } catch (error) {
+      console.error('OpenAI API error:', error);
+      throw new Error('Failed to generate optimized prompt');
+    }
+  }
+
+  static async generateAgenticWorkflow(input: GenerationInput): Promise<GenerationResult> {
+    if (USE_MOCK_AI) {
+      return this.generateMockAgenticWorkflow(input);
+    }
+
+    const systemPrompt = `You are an expert in designing AI agent workflows and autonomous systems. Your task is to transform user ideas into comprehensive, production-ready agent specifications.
+
+Guidelines for creating agentic workflows:
+1. Design clear system prompts with agent identity and capabilities
+2. Break down complex tasks into manageable sub-tasks
+3. Define decision points and branching logic
+4. Specify required tools and integrations
+5. Include error handling and recovery procedures
+6. Define success criteria and termination conditions
+7. Add safety constraints and human oversight points
+8. Structure for implementation in agent frameworks
+
+Create a complete agent specification that includes system prompts, workflow logic, tool requirements, and implementation guidelines.`;
+
+    const userPrompt = this.buildAgenticWorkflowRequest(input);
+
+    try {
+      const response = await openai!.chat.completions.create({
+        model: 'gpt-4',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.6,
+        max_tokens: 2500
+      });
+
+      const content = response.choices[0]?.message?.content || 'Failed to generate workflow';
+      const tokensUsed = response.usage?.total_tokens || 0;
+      const cost = (tokensUsed / 1000) * this.COST_PER_1K_TOKENS;
+
+      return { content, tokensUsed, cost };
+    } catch (error) {
+      console.error('OpenAI API error:', error);
+      throw new Error('Failed to generate agent workflow');
+    }
+  }
+
+  // Mock AI responses for when OpenAI API key is not available
+  private static async generateMockSinglePrompt(input: GenerationInput): Promise<GenerationResult> {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const content = `# Optimized AI Prompt
+
+## Context & Role
+You are a ${input.industry || 'professional'} expert helping ${input.targetAudience || 'users'} with ${input.mainIdea}.
+
+## Task
+${input.mainIdea}
+
+## Requirements
+- Tone: ${input.tone}
+- Format: ${input.outputFormat.replace('-', ' ')}
+- Length: ${input.length}
+${input.context ? `- Context: ${input.context}` : ''}
+${input.requirements ? `- Additional Requirements: ${input.requirements}` : ''}
+
+## Instructions
+1. Analyze the request carefully
+2. Provide a ${input.length} response in ${input.tone} tone
+3. Format the output as ${input.outputFormat.replace('-', ' ')}
+4. Ensure accuracy and relevance
+
+## Output Format
+Please structure your response clearly and provide actionable insights.
+
+---
+*This prompt has been optimized for clarity, specificity, and effectiveness with AI models.*`;
+
+    return {
+      content,
+      tokensUsed: Math.floor(Math.random() * 500) + 200,
+      cost: 0.02
+    };
+  }
+
+  private static async generateMockAgenticWorkflow(input: GenerationInput): Promise<GenerationResult> {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    const content = `# AI Agent Workflow Specification
+
+## Agent Identity
+**Role**: ${input.industry || 'General'} Automation Agent
+**Objective**: ${input.mainIdea}
+
+## System Prompt
+\`\`\`
+You are an autonomous AI agent specialized in ${input.industry || 'general tasks'}. Your primary objective is to ${input.mainIdea}.
+
+You have access to the following capabilities:
+- Web browsing and research
+- Data analysis and processing
+- Communication tools
+- File management
+- API integrations
+
+Always prioritize accuracy, efficiency, and user safety in your operations.
+\`\`\`
+
+## Workflow Breakdown
+
+### Phase 1: Planning & Analysis
+1. **Analyze Requirements**
+   - Parse user input and context
+   - Identify key objectives and constraints
+   - Determine required resources and tools
+
+2. **Create Execution Plan**
+   - Break down task into subtasks
+   - Establish dependencies and priorities
+   - Set success criteria and checkpoints
+
+### Phase 2: Execution
+1. **Data Gathering**
+   - Collect relevant information
+   - Validate data sources
+   - Process and structure data
+
+2. **Task Processing**
+   - Execute core workflow logic
+   - Apply business rules and constraints
+   - Generate intermediate results
+
+3. **Quality Assurance**
+   - Validate outputs against criteria
+   - Perform error checking
+   - Implement fallback procedures
+
+### Phase 3: Delivery & Monitoring
+1. **Result Compilation**
+   - Format outputs according to specifications
+   - Generate reports and summaries
+   - Prepare deliverables
+
+2. **Monitoring & Feedback**
+   - Track performance metrics
+   - Log activities and decisions
+   - Provide status updates
+
+## Required Tools & Capabilities
+${input.agentCapabilities || `
+- Web scraping and API access
+- Data processing and analysis
+- Communication interfaces
+- File system operations
+- Scheduling and automation
+`}
+
+## Success Criteria
+${input.workflowParams || `
+- Task completion within specified timeframe
+- Output quality meets defined standards
+- No critical errors or failures
+- User satisfaction with results
+`}
+
+## Safety & Constraints
+- Always verify data before processing
+- Implement rate limiting for external APIs
+- Maintain audit logs of all actions
+- Require human approval for critical decisions
+- Respect privacy and security requirements
+
+## Error Handling
+1. **Graceful Degradation**: Continue with reduced functionality if possible
+2. **Retry Logic**: Implement exponential backoff for transient failures
+3. **Human Escalation**: Alert operators for unresolvable issues
+4. **Rollback Procedures**: Maintain ability to undo changes if needed
+
+## Implementation Notes
+- Compatible with LangChain, AutoGPT, and similar frameworks
+- Requires monitoring dashboard for operational oversight
+- Should be deployed with appropriate resource limits
+- Regular updates needed for evolving requirements
+
+---
+*This workflow specification provides a complete foundation for implementing an autonomous AI agent system.*`;
+
+    return {
+      content,
+      tokensUsed: Math.floor(Math.random() * 800) + 400,
+      cost: 0.05
+    };
+  }
+
+  private static buildSinglePromptRequest(input: GenerationInput): string {
+    let request = `Please transform this basic idea into an optimized AI prompt:\n\n`;
+    request += `Basic Idea: ${input.mainIdea}\n\n`;
+
+    if (input.context) {
+      request += `Context: ${input.context}\n\n`;
+    }
+
+    request += `Requirements:\n`;
+    request += `- Industry/Domain: ${input.industry || 'General'}\n`;
+    request += `- Target Audience: ${input.targetAudience || 'General'}\n`;
+    request += `- Output Format: ${input.outputFormat.replace('-', ' ')}\n`;
+    request += `- Tone: ${input.tone}\n`;
+    request += `- Length: ${input.length}\n`;
+
+    if (input.requirements) {
+      request += `\nSpecific Requirements:\n${input.requirements}\n`;
+    }
+
+    if (input.examples) {
+      request += `\nStyle Examples:\n${input.examples}\n`;
+    }
+
+    request += `\nPlease create a well-structured, professional prompt that incorporates these requirements and follows AI prompting best practices.`;
+
+    return request;
+  }
+
+  private static buildAgenticWorkflowRequest(input: GenerationInput): string {
+    let request = `Please create a comprehensive AI agent workflow specification for this task:\n\n`;
+    request += `Main Objective: ${input.mainIdea}\n\n`;
+
+    if (input.context) {
+      request += `Context: ${input.context}\n\n`;
+    }
+
+    request += `Specifications:\n`;
+    request += `- Industry/Domain: ${input.industry || 'General'}\n`;
+    request += `- Target Audience: ${input.targetAudience || 'General'}\n`;
+    request += `- Output Format: ${input.outputFormat.replace('-', ' ')}\n`;
+    request += `- Tone: ${input.tone}\n`;
+    request += `- Complexity: ${input.length}\n`;
+
+    if (input.taskDecomposition) {
+      request += `\nTask Breakdown:\n${input.taskDecomposition}\n`;
+    }
+
+    if (input.agentCapabilities) {
+      request += `\nRequired Tools & Capabilities:\n${input.agentCapabilities}\n`;
+    }
+
+    if (input.workflowParams) {
+      request += `\nSuccess Criteria & Parameters:\n${input.workflowParams}\n`;
+    }
+
+    request += `\nPlease create a complete agent specification including:
+1. System prompt for the agent
+2. Detailed workflow breakdown with sub-tasks
+3. Tool and capability requirements
+4. Error handling and safety measures
+5. Success criteria and termination conditions
+6. Implementation guidelines
+7. Human oversight points
+
+Format this as a production-ready agent specification that could be implemented in frameworks like LangChain, AutoGPT, or similar agent platforms.`;
+
+    return request;
+  }
+}
