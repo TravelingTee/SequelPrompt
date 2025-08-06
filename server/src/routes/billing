@@ -1,0 +1,15 @@
+import express from 'express';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
+
+const router = express.Router();
+
+// Placeholder billing routes (Stripe integration would go here)
+router.post('/create-checkout-session', authenticateToken, async (req: AuthRequest, res) => {
+  res.status(501).json({ error: 'Billing not implemented yet' });
+});
+
+router.post('/create-portal-session', authenticateToken, async (req: AuthRequest, res) => {
+  res.status(501).json({ error: 'Billing not implemented yet' });
+});
+
+export default router;
